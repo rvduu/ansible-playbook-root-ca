@@ -1,16 +1,11 @@
 ---
-# Create an Root CA and server certificate for localhost (for development purposes)
-# Based on the tutorial from https://arminreiter.com/2022/01/create-your-own-certificate-authority-ca-using-openssl/
-# ToDo:
-#   - Create a role
-#   - Add support for other distributions
-
 - name: Setup Root CA and create/sign server certificate
   hosts: localhost
   vars:
     # Change the below vars according to the needs
     #
     # Common certificate atributes
+    # FIXME: Fail if ansible_domain is empty
     Domain: "{{ansible_domain}}" # or just put in "example.com" if the domainname does not resolve correctly
     Country: NL
     Locality: Amsterdam

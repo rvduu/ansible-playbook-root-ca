@@ -9,7 +9,8 @@ This playbook creates a Root CA and server certificates for development purposes
 
 
 ## Usage
-To generate certificates and install them inclusing the HTTPD package on `localhost`
+* Update the `vars` section in the playbook to customize the certificate details
+* Generate certificates and install them inclusing the HTTPD package on `localhost`
 ```
 ansible-playbook --ask-become-pass ansible-playbook-root-ca.yml
 ```
