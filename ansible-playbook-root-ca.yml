@@ -1,0 +1,156 @@
+---
+# Create an Root CA and server certificate for localhost (for development purposes)
+# Based on the tutorial from https://arminreiter.com/2022/01/create-your-own-certificate-authority-ca-using-openssl/
+# ToDo:
+#   - Create a role
+#   - Add support for other distributions
+
+- name: Setup Root CA and create/sign server certificate
+  hosts: localhost
+  vars:
+    # Change the below vars according to the needs
+    #
+    # Common certificate atributes
+    Domain: "{{ansible_domain}}" # or just put in "example.com" if the domainname does not resolve correctly
+    Country: NL
+    Locality: Amsterdam
+    Organization: Cloud Org
+    OrganizationalUnit: Cloud OU
+    Email: noreply@{{Domain}}
+    # Specific RootCA attributes
+    CAdir: RootCA
+    CAname: CloudOrg
+    CApassphrase: Test123
+    CAdays: 3650 # 10 years
+    CAsubject: /C={{Country}}/CN={{Organization}} Root CA/
+    # Specific Server certificate attributes
+    SRVsubject: >
+      /CN={{ansible_hostname}}.{{Domain}}/C={{Country}}/L={{Locality}}/O={{Organization}}/OU={{OrganizationalUnit}}/emailAddress={{Email}}
+    SRVdays: 1095 # 3 year
+
+  tasks:
+    - name: Create certificates, install & enable httpd on Fedora
+      when: ansible_facts['os_family'] == "RedHat"
+      block:
+        - name: Create RootCA directory
+          ansible.builtin.file:
+            path: '{{CAdir}}'
+            state: directory
+
+        - name: Generate CA key file
+          ansible.builtin.command:
+            cmd: openssl genrsa -aes256 -out "{{CAdir}}/{{CAname}}.key" --passout "pass:{{CApassphrase}}" 4096
+            creates: '{{CAdir}}/{{CAname}}.key'
+
+        - name: Create CA certificate
+          ansible.builtin.command:
+            cmd: >
+              openssl req -x509 -new -nodes -key "{{CAdir}}/{{CAname}}.key"
+                --passin "pass:{{CApassphrase}}" -sha256 -days {{CAdays}}
+                -out "{{CAdir}}/{{CAname}}.crt" -subj '{{CAsubject}}'
+            creates: '~/{{CAdir}}/{{CAname}}.crt'
+
+        - name: Create localhost directory
+          ansible.builtin.file:
+            path: "{{CAdir}}/localhost"
+            state: directory
+
+        - name: Create a v3 ext file for SAN properties
+          ansible.builtin.shell:
+            cmd: |
+              cat > "{{CAdir}}/localhost/localhost.ext" << EOF
+              authorityKeyIdentifier=keyid,issuer
+              basicConstraints=CA:FALSE
+              keyUsage = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment
+              subjectAltName = @alt_names
+              [alt_names]
+              DNS.1 = localhost
+              DNS.2 = *.{{Domain}}
+              EOF
+            creates: "{{CAdir}}/localhost/localhost.ext"
+
+        - name: Create a Certificate Signing Request (CSR) for localhost
+          ansible.builtin.command:
+            cmd: >
+              openssl req -new -nodes -out "{{CAdir}}/localhost/localhost.csr"
+                -newkey rsa:4096 -keyout "{{CAdir}}/localhost/localhost.key" 
+                -subj '{{SRVsubject}}'
+            creates: "{{CAdir}}/localhost/localhost.csr"
+
+        - name: Create/sign the certificate for localhost
+          ansible.builtin.command:
+            cmd: >
+              openssl x509 -req -in "{{CAdir}}/localhost/localhost.csr"
+                -CA "{{CAdir}}/{{CAname}}.crt" -CAkey "{{CAdir}}/{{CAname}}.key"
+                --passin "pass:{{CApassphrase}}" -CAcreateserial
+                -out "{{CAdir}}/localhost/localhost.crt" -days {{SRVdays}}
+                -sha256 -extfile "{{CAdir}}/localhost/localhost.ext"
+            creates: "{{CAdir}}/localhost/localhost.crt"
+          register: createcert
+
+        - name: Use 'openssl x509' to decode the newly created certificate
+          ansible.builtin.command:
+            cmd: openssl x509 -in "{{CAdir}}/localhost/localhost.crt" -noout -text
+          when: createcert.changed == true
+
+        - name: Deploy RootCA certificate
+          ansible.builtin.copy:
+            src: "{{CAdir}}/{{CAname}}.crt"
+            dest: "/etc/pki/ca-trust/source/anchors/{{CAname}}.crt"
+          register: deployca
+          become: true
+
+        - name: Update CA trusts after deploying new CA certificate
+          ansible.builtin.command:
+            cmd: update-ca-trust
+          when: deployca.changed == true
+          become: true
+
+        - name: Install packages
+          ansible.builtin.package:
+            name:
+              - httpd
+              - mod_ssl
+            state: latest
+          notify: Restart httpd
+          become: true
+
+        - name: Deploy new server key file
+          ansible.builtin.copy:
+            src: "{{CAdir}}/localhost/localhost.key"
+            dest: /etc/pki/tls/private/localhost.key
+            mode: 600
+          notify: Restart httpd
+          become: true
+
+        - name: Deploy new server certificate
+          ansible.builtin.copy:
+            src: "{{CAdir}}/localhost/localhost.crt"
+            dest: /etc/pki/tls/certs/localhost.crt
+          notify: Restart httpd
+          become: true
+
+        - name: Always enable and start httpd service
+          ansible.builtin.service:
+            name: httpd
+            enabled: true
+            state: started
+          become: true
+
+        - name: Flush handlers
+          meta: flush_handlers
+
+        - name: Test the CA certificate using curl
+          ansible.builtin.command:
+            cmd: curl https://localhost/
+
+        - name: Test
+          ansible.builtin.debug:
+            var: ansible_facts
+
+  handlers:
+    - name: Restart httpd
+      ansible.builtin.service:
+        name: httpd
+        state: restarted
+      become: true
