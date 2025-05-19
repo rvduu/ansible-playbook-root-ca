@@ -43,7 +43,7 @@
               openssl req -x509 -new -nodes -key "{{CAdir}}/{{CAname}}.key"
                 --passin "pass:{{CApassphrase}}" -sha256 -days {{CAdays}}
                 -out "{{CAdir}}/{{CAname}}.crt" -subj '{{CAsubject}}'
-            creates: '~/{{CAdir}}/{{CAname}}.crt'
+            creates: '{{CAdir}}/{{CAname}}.crt'
 
         - name: Create localhost directory
           ansible.builtin.file:
