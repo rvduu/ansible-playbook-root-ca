@@ -83,7 +83,7 @@
             creates: "{{CAdir}}/localhost/localhost.crt"
           register: createcert
 
-        - name: Use 'openssl x509' to decode the newly created certificate
+        - name: Test the newly created certificate by using 'openssl x509' to decode it
           ansible.builtin.command:
             cmd: openssl x509 -in "{{CAdir}}/localhost/localhost.crt" -noout -text
           when: createcert.changed == true
