@@ -1,6 +1,6 @@
 # ansible-playbook-root-ca - create and install Root CA + server certificates allowing clients to use secure connections
 
-This playbook creates a Root CA and server certificates for development purposes. It also ads the CA certificate to the list of trustes CA so that clients (`curl` and Firefox) can use a secure connection. For testing, this playbook also installs and enables a HTTPD server using the generated certificates.
+This playbook creates a Root CA and server certificates for development purposes. It also adds the CA certificate to the list of trusted CA certificates so that clients (i.e. `curl` and Firefox) can use a secure connection. For testing, this playbook also installs and enables a HTTPD server using the generated certificates.
 
 ## Prerequisite
 * This playbook currently supports Red Hat family of distributions (RHEL/CentOS/Fedora)

@@ -139,10 +139,6 @@
           ansible.builtin.command:
             cmd: curl https://localhost/
 
-        - name: Test
-          ansible.builtin.debug:
-            var: ansible_facts
-
   handlers:
     - name: Restart httpd
       ansible.builtin.service:
