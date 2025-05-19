@@ -4,8 +4,11 @@ This playbook creates a Root CA and server certificates for development purposes
 
 ## Prerequisite
 * This playbook currently supports Red Hat family of distributions (RHEL/CentOS/Fedora)
-* Ansible
 * sudo access on the host
+* Ansible Core
+    ```
+    sudo dnf install ansible-core
+    ```
 
 
 ## Usage
