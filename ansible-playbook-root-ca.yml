@@ -50,7 +50,7 @@
             path: "{{CAdir}}/localhost"
             state: directory
 
-        - name: Create a v3 ext file for SAN properties
+        - name: Create a v3 ext file for Subject Alternative Name (SAN) properties
           ansible.builtin.shell:
             cmd: |
               cat > "{{CAdir}}/localhost/localhost.ext" << EOF
