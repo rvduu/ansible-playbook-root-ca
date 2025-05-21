@@ -138,6 +138,7 @@
         - name: Test the CA certificate using curl
           ansible.builtin.command:
             cmd: curl https://localhost/
+          changed_when: False
 
   handlers:
     - name: Restart httpd
